@@ -14,31 +14,145 @@ class PriceBaseGenerator(ABC):
     def generate_minute_price(self, stock_data, time):
         pass
 
-class RandomWalkGenerator(PriceBaseGenerator):
-    def __init__(self, volatility, drift):
-        self._volatility = volatility
-        self._drift = drift
-        self._last_price = None
-    
-    def generate_minute_price(self, stock_data: PriceData, time):
-        if self._last_price is None:
-            self._last_price = stock_data.get_latest_price()
-
-        fluctuation = random.uniform(-self._volatility, self._volatility)
-        drft = random.uniform(-self._drift, self._drift)
-        if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
-            new_price = self._last_price.close + fluctuation + drft
-        else:
-            new_price = self._last_price.close + fluctuation
-        
-        # Create minimal open/high/low/close data
-        open_price = self._last_price.close
-        close_price = new_price
-        high_price = max(open_price, close_price) + random.uniform(0, self._volatility)
-        low_price = min(open_price, close_price) - random.uniform(0, self._volatility)
+    def update_stock_data(self, stock_data, open_price, close_price):
+        # Create OHLCV data for the minute
+        # For simplicity, assume open == close, high & low ~ small random
+        time = stock_data.last_updated + timedelta(minutes=1)
+        high_price = max(open_price, close_price) + random.uniform(0, self.volatility)
+        low_price = min(open_price, close_price) - random.uniform(0, self.volatility)
         volume = random.randint(100, 1000)
 
         # Update the StockData object with the new price point
-        stock_data.add_price_point(PricePoint(time, open_price, high_price, low_price, close_price, volume))
-        self._last_price = stock_data.get_latest_price()
-        volume = random.randint(100, 1000)
+        stock_data.add_price_point(
+            PricePoint(
+                time, 
+                open_price, 
+                high_price, 
+                low_price, 
+                close_price, 
+                volume
+            )
+        )
+
+# gen method 1: random walk
+class RandomWalkGenerator(PriceBaseGenerator):
+    def __init__(self, volatility=0.03, drift=0.05):
+        self.volatility = volatility
+        self.drift = drift
+        self.last_price = None
+    
+    def generate_minute_price(self, stock_data: PriceData):
+        if self.last_price is None:
+            self.last_price = stock_data.get_latest_price()
+
+        fluctuation = random.uniform(-self.volatility, self.volatility)
+
+        new_price = self.last_price + fluctuation
+        if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
+            new_price += random.uniform(-self.drift, self.drift)
+        
+        open_price = self.last_price.close
+        close_price = new_price
+
+        # Update the StockData object with the new price point
+        self.update_stock_data(stock_data, open_price, close_price)
+
+# gen method 2: Geometric Brownian Motion (GBM)
+class GeometricBrownianMotionPriceGenerator(PriceBaseGenerator):
+    def __init__(self, volatility=0.03, drift=0.05, mu=0.1, sigma=0.2):
+        """
+        :param mu: Annual drift (expected return)
+        :param sigma: Annual volatility
+        """
+        self.mu = mu
+        self.sigma = sigma
+        self.last_price = None
+        self.volatility = volatility 
+        self.drift = drift
+
+        # One minute as a fraction of a year (roughly 525,600 minutes per year)
+        self.dt = 1.0 / 525600.0
+
+    def generate_minute_price(self, stock_data: PriceData):
+        """
+        dS = S * (mu * dt + sigma * sqrt(dt) * Z)
+        (Using log form: S_t+1 = S_t * exp((mu - 0.5*sigma^2)*dt + sigma*sqrt(dt)*Z))
+        """
+        self.last_price = stock_data.get_latest_price()
+
+        # Draw from a normal distribution
+        z = random.gauss(0, 1)
+
+        drift_term = (self.mu - 0.5 * self.sigma ** 2) * self.dt
+        diffusion_term = self.sigma * math.sqrt(self.dt) * z
+
+        new_price = self.last_price * math.exp(drift_term + diffusion_term)
+
+        if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
+            new_price = self.last_price * math.exp(drift_term + diffusion_term) + random.uniform(-self._drift, self._drift)
+        
+        open_price = self.last_price.close
+        close_price = new_price
+
+        # Update the StockData object with the new price point
+        self.update_stock_data(stock_data, open_price, close_price)
+
+# gen method 3: Heston Jump Diffusion Model
+class HestonJumpDiffusionPriceGenerator(PriceBaseGenerator):
+    def __init__(self, volatility=0.03, drift=0.05, mu=0.1, kappa=1.5, theta=0.04, sigma_v=0.3, rho=0.0,
+                 jump_lambda=0.001, jump_mean=-0.2, jump_vol=0.3):
+        self.mu = mu           # Drift
+        self.kappa = kappa     # Mean reversion speed of variance
+        self.theta = theta     # Long-term variance
+        self.sigma_v = sigma_v # Vol of variance
+        self.rho = rho         # Correlation
+        self.jump_lambda = jump_lambda
+        self.jump_mean = jump_mean
+        self.jump_vol = jump_vol
+        self.dt = 1.0 / 525600.0  # 1 minute fraction of a year  
+        self.last_price = None
+        self.volatility = volatility 
+        self.drift = drift
+
+    def generate_minute_price(self, stock_data: PriceData):
+        self.last_price = stock_data.get_latest_price()
+
+        stock_data.variance = 0.04  # e.g., 20% vol squared
+        v = stock_data.variance
+
+        # Draw correlated randoms (z1 for price, z2 for variance)
+        z1 = random.gauss(0, 1)
+        z2 = random.gauss(0, 1)
+        if self.rho != 0.0:
+            z2 = self.rho * z1 + math.sqrt(1 - self.rho**2) * z2
+
+        # Update variance (Heston)
+        dv = self.kappa * (self.theta - v) * self.dt + \
+             self.sigma_v * math.sqrt(max(v, 0.0)) * math.sqrt(self.dt) * z2
+        new_v = max(v + dv, 0.0)
+        stock_data.variance = new_v
+
+        # Price diffusion
+        dS_diffusion = self.mu * self.last_price * self.dt + \
+                       math.sqrt(max(v, 0.0)) * self.last_price * math.sqrt(self.dt) * z1
+        new_price = self.last_price + dS_diffusion
+
+        # Jump check (Poisson process)
+        jump_prob = 1 - math.exp(-self.jump_lambda * self.dt)
+        if random.random() < jump_prob:
+            # Merton-style lognormal jump
+            z_jump = random.gauss(0, 1)
+            jump_factor = math.exp(self.jump_mean + self.jump_vol * z_jump)
+            new_price *= jump_factor
+
+        # Final guard check
+        new_price = max(new_price, 0.01)
+        if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
+            new_price += random.uniform(-self.drift, self.drift)
+
+        open_price = self.last_price.close
+        close_price = new_price
+
+        # Update the StockData object with the new price point
+        self.update_stock_data(stock_data, open_price, close_price)
+    
