@@ -1,7 +1,7 @@
 import random
 import math
 from datetime import timedelta, datetime
-from data_models.price_data import PriceData, PricePoint
+from src.data_models.price_data import PriceData, PricePoint
 from abc import ABC, abstractmethod
 
 class PriceBaseGenerator(ABC):
@@ -51,7 +51,7 @@ class RandomWalkGenerator(PriceBaseGenerator):
         if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
             new_price += random.uniform(-self.drift, self.drift)
         
-        open_price = self.last_price.close
+        open_price = self.last_price
         close_price = new_price
 
         # Update the StockData object with the new price point
@@ -89,9 +89,9 @@ class GeometricBrownianMotionPriceGenerator(PriceBaseGenerator):
         new_price = self.last_price * math.exp(drift_term + diffusion_term)
 
         if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
-            new_price = self.last_price * math.exp(drift_term + diffusion_term) + random.uniform(-self._drift, self._drift)
+            new_price = self.last_price * math.exp(drift_term + diffusion_term) + random.uniform(-self.drift, self.drift)
         
-        open_price = self.last_price.close
+        open_price = self.last_price
         close_price = new_price
 
         # Update the StockData object with the new price point
@@ -150,7 +150,7 @@ class HestonJumpDiffusionPriceGenerator(PriceBaseGenerator):
         if stock_data.get_price_points_count() == 0 or stock_data.get_price_points_count() % 390 == 0: # Every 390 minutes (1 trading day)
             new_price += random.uniform(-self.drift, self.drift)
 
-        open_price = self.last_price.close
+        open_price = self.last_price
         close_price = new_price
 
         # Update the StockData object with the new price point
