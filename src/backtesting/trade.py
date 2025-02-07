@@ -1,69 +1,71 @@
 from src.data_models.trade_record import TradeRecord
 from src.data_models.price_data import PriceData
-from src.backtesting.backtest_engine import TradeSignal
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
-
-@dataclass
-class Trade:
-    """
-    Represents a single trade execution record in the backtest.
-
-    Attributes:
-        time (datetime): The time the trade was executed.
-        action (str): The trade action ('BUY' or 'SELL').
-        price (float): The execution price.
-        position (float): The resulting position size.
-        capital (float): The account capital after the trade.
-    """
-    time: datetime
-    action: str
-    price: float
-    position: float
-    capital: float
+from src.data_models.trade_record import TradeRecord
 
 class TradeManager:
     """
     Manages trades and calculates performance metrics.
     """
     def __init__(self, initial_capital: float = 100000.0):
-        self.initial_capital = initial_capital
         self.trades = []
-        self.capital = initial_capital
+        self.initial_capital = initial_capital
+        self.no_of_shares = 0
+        self.current_price = 0
+        self.cash = initial_capital
+        self.current_quantity = 0
+        self.capital = self.cash + self.current_price * self.current_quantity
+        self.profit = self.capital - initial_capital
 
 
-    def buy(self, price: float, position: float):
+    def buy(self, price: float, no_of_shares_traded: float):
         """
         Execute a buy trade.
         """
-        if self.capital > price * position:
-            self.capital -= price * position
-            self.trades.append(Trade(
+        print("remaining cash before buy: ", self.cash)
+        self.current_price = price
+        if self.cash >= price * no_of_shares_traded:
+            self.cash -= price * no_of_shares_traded
+            self.current_quantity += no_of_shares_traded
+            self.capital = self.cash + self.current_price * self.current_quantity
+            self.trades.append(TradeRecord(
                 time=datetime.now(),
                 action='BUY',
                 price=price,
-                position=position,
+                traded_shares=no_of_shares_traded,
+                available_cash=self.cash,
                 capital=self.capital
             ))
-        else:
-            pass
+            print("remaining cash after buy: ", self.cash, "capital: ", self.capital)
+            return True  # Order executed successfully
+        return False  # Order not executed due to insufficient capital
 
-    def sell(self, price: float, position: float):
+    def sell(self, price: float, no_of_shares_traded: float):
         """
         Execute a sell trade.
         """
-        if 
-        self.capital += price * position
-        self.trades.append(Trade(
-            time=datetime.now(),
-            action='SELL',
-            price=price,
-            position=position,
-            capital=self.capital
-        ))
+        print("remaining cash before sell: ", self.cash)
+        self.current_price = price
+        if self.current_quantity >= no_of_shares_traded: 
+            self.current_quantity -= no_of_shares_traded
+            self.cash += price * no_of_shares_traded
+            self.capital = self.cash + self.current_price * self.current_quantity
+            self.trades.append(TradeRecord(
+                time=datetime.now(),
+                action='SELL',
+                price=price,
+                traded_shares=no_of_shares_traded,
+                available_cash=self.cash,
+                capital=self.capital
+            ))
+            print("remaining cash after sell: ", self.cash, "capital: ", self.capital)
+            return True  # Order executed successfully
+        return False  # Order not executed due to insufficient capital
+            
 
-    def get_trades(self) -> List[Trade]:
+    def get_trades(self) -> List[TradeRecord]:
         """
         Get all trades executed so far.
         """
