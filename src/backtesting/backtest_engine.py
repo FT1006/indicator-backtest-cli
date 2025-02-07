@@ -2,21 +2,14 @@ from typing import List, Dict
 from datetime import datetime
 from src.data_models.price_data import PriceData
 from src.indicators.price_indicators import PriceIndicators
-from dataclasses import dataclass
-
-@dataclass
-class TradeSignal:
-    time: datetime
-    action: str  # 'BUY' or 'SELL'
-    price: float
-    strategy: str
+from src.data_models.signal import ordersignal
 
 class Strategy:
     def __init__(self, price_data: PriceData):
         self.price_data = price_data
         self.indicators = PriceIndicators(price_data)
     
-    def generate_signals(self) -> List[TradeSignal]:
+    def generate_signals(self) -> List[ordersignal]:
         raise NotImplementedError("Subclasses must implement generate_signals")
 
 class TwoMAStrategy(Strategy):
@@ -26,7 +19,7 @@ class TwoMAStrategy(Strategy):
         self.slow_period = slow_period
         self.name = "2MA"
     
-    def generate_signals(self) -> List[TradeSignal]:
+    def generate_signals(self) -> List[ordersignal]:
         signals = []
         
         # Get MA values (each element is an IndicatorValue)
@@ -45,7 +38,7 @@ class TwoMAStrategy(Strategy):
             if prev_fast is not None and prev_slow is not None:
                 # Bullish crossover (fast MA crosses above slow MA)
                 if prev_fast <= prev_slow and fast_val > slow_val:
-                    signals.append(TradeSignal(
+                    signals.append(ordersignal(
                         time=time,
                         action='BUY',
                         price=self.price_data.get_price_at_time(time).close,
@@ -53,7 +46,7 @@ class TwoMAStrategy(Strategy):
                     ))
                 # Bearish crossover (fast MA crosses below slow MA)
                 elif prev_fast >= prev_slow and fast_val < slow_val:
-                    signals.append(TradeSignal(
+                    signals.append(ordersignal(
                         time=time,
                         action='SELL',
                         price=self.price_data.get_price_at_time(time).close,
@@ -72,8 +65,8 @@ class TwoMACDStrategy(Strategy):
         self.slow = slow
         self.signal = signal
         self.name = "2MACD"
-    
-    def generate_signals(self) -> List[TradeSignal]:
+
+    def generate_signals(self) -> List[ordersignal]:
         signals = []
         
         # Get MACD values: expecting a list of MACDValue objects.
@@ -91,7 +84,7 @@ class TwoMACDStrategy(Strategy):
             if prev_dif is not None and prev_dea is not None:
                 # Bullish crossover (MACD crosses above signal)
                 if prev_dif <= prev_dea and dif > dea:
-                    signals.append(TradeSignal(
+                    signals.append(ordersignal(
                         time=time,
                         action='BUY',
                         price=self.price_data.get_price_at_time(time).close,
@@ -99,7 +92,7 @@ class TwoMACDStrategy(Strategy):
                     ))
                 # Bearish crossover (MACD crosses below signal)
                 elif prev_dif >= prev_dea and dif < dea:
-                    signals.append(TradeSignal(
+                    signals.append(ordersignal(
                         time=time,
                         action='SELL',
                         price=self.price_data.get_price_at_time(time).close,
@@ -116,6 +109,7 @@ class BacktestEngine:
         self.price_data = price_data
         self.initial_capital = initial_capital
         self.strategies: List[Strategy] = []
+        self.signals = []
         
     def add_strategy(self, strategy: Strategy):
         self.strategies.append(strategy)
@@ -125,51 +119,10 @@ class BacktestEngine:
         Run backtest for all strategies and return performance metrics
         """
         results = {}
+        if not self.strategies:
+            print("No strategies to run.")
+            return
         
         for strategy in self.strategies:
-            signals = strategy.generate_signals()
-            
-            # Initialize metrics
-            capital = self.initial_capital
-            position = 0
-            trades = []
-            
-            for signal in signals:
-                if signal.action == 'BUY':
-                    # Simple position sizing: invest all capital
-                    position = capital / signal.price
-                    trades.append({
-                        'time': signal.time,
-                        'action': 'BUY',
-                        'price': signal.price,
-                        'position': position,
-                        'capital': capital
-                    })
-                elif signal.action == 'SELL' and position > 0:
-                    # Close position
-                    capital = position * signal.price
-                    trades.append({
-                        'time': signal.time,
-                        'action': 'SELL',
-                        'price': signal.price,
-                        'position': position,
-                        'capital': capital
-                    })
-                    position = 0
-            
-            # Close any remaining position using last price
-            if position > 0:
-                last_price = self.price_data.get_latest_price()
-                capital = position * last_price
-            
-            # Calculate metrics
-            returns = (capital - self.initial_capital) / self.initial_capital
-            
-            results[strategy.name] = {
-                'final_capital': capital,
-                'returns': returns,
-                'trades': trades,
-                'signals': signals
-            }
+            self.signals.append(strategy.generate_signals())
         
-        return results
