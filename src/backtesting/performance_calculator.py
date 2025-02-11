@@ -13,12 +13,40 @@ class BacktestPerformance:
         self.periods_per_year = periods_per_year
 
     def calculate(self, equity_curve: List[float], trades: List[float]) -> BacktestResult:
-        """
-        Calculate performance metrics based on the provided equity curve and list of trade returns.
-        
-        :param equity_curve: List of portfolio equity values in chronological order.
-        :param trades: List of individual trade returns (can be absolute numbers or percentages).
-        :return: BacktestResult containing multiple performance and risk metrics.
+        """Calculate comprehensive performance metrics from trading results and equity curve.
+
+        Args:
+            equity_curve: Chronological list of portfolio equity values. Must contain at least
+                one value representing initial capital. Example: [10000, 10100, 10250] indicates
+                starting with $10k and growing to $10,250 over two periods.
+            trades: List of individual trade returns (absolute values or percentages). Positive
+                values indicate profitable trades, negative values indicate losses.
+
+        Returns:
+            BacktestResult: Dataclass containing:
+            - Core metrics: initial/final capital, total/annualized returns
+            - Risk metrics: max drawdown, volatility
+            - Risk-adjusted returns: Sharpe/Sortino/Calmar ratios
+            - Trade statistics: win rate, profit factor, average trade return
+
+        Raises:
+            ValueError: If equity_curve is empty or contains invalid values
+
+        Notes:
+            Key Calculations:
+            1. Return Metrics:
+                - Total Return: (Final - Initial) / Initial
+                - CAGR: Annualized compound growth rate
+            2. Risk Metrics:
+                - Volatility: Annualized stddev of daily returns
+                - Max Drawdown: Largest peak-to-trough decline
+            3. Ratios:
+                - Sharpe: Excess return per unit of total risk
+                - Sortino: Excess return per unit of downside risk
+                - Calmar: Annual return vs max drawdown
+            4. Trade Analysis:
+                - Win Rate: Percentage of profitable trades
+                - Profit Factor: Gross profit / gross loss
         """
         if not equity_curve:
             raise ValueError("Equity curve cannot be empty")

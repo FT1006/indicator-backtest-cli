@@ -40,6 +40,28 @@ def get_strategy_choice():
         print("Invalid choice. Please enter 1, 2, or 3.")
 
 def main():
+    """Main entry point for the backtesting CLI application.
+    
+    Orchestrates the complete workflow including:
+    - Configuration loading and logging setup
+    - User input collection for price generation and strategy selection
+    - Price data generation using selected methodology
+    - Backtest engine initialization and strategy configuration
+    - Backtest execution and performance reporting
+    - Results visualization
+
+    The workflow progresses through 11 distinct steps as shown in the console output,
+    handling both successful execution paths and error conditions.
+
+    Args:
+        None
+        
+    Returns:
+        None
+        
+    Raises:
+        Exception: Propagates any exceptions that occur during execution, after logging
+    """
     try:
         print("Step 1: Load CLI configuration and initialize logging.")
         config_loader = CLIConfigLoader()

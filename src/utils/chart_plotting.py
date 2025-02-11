@@ -7,9 +7,27 @@ from plotly.subplots import make_subplots
 import pandas as pd
 
 def plot_price_data(price_data):
-    """
-    Given a PriceData object (which has a list of PricePoint objects),
-    convert the data into a Plotly candlestick chart with a volume indicator subplot.
+    """Plot price data as candlestick chart with volume subplot.
+
+    Converts PriceData object into a Plotly visualization with:
+    - Upper panel: Candlestick chart showing open/high/low/close prices
+    - Lower panel: Volume bars showing trading volume
+
+    Args:
+        price_data (PriceData): Object containing list of PricePoint objects with:
+            - time (datetime)
+            - open (float)
+            - high (float)
+            - low (float)
+            - close (float)
+            - volume (float)
+
+    Returns:
+        None: Displays interactive Plotly chart but doesn't return anything
+
+    Example:
+        >>> data = PriceData(symbol="AAPL", price_points=[...])
+        >>> plot_price_data(data)
     """
     # Extract lists from price_data.price_points
     times = [pp.time for pp in price_data.price_points]

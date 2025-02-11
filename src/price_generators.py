@@ -5,13 +5,25 @@ from src.data_models.price_data import PriceData, PricePoint
 from abc import ABC, abstractmethod
 
 class PriceBaseGenerator(ABC):
-    """
-    Abstract base class to enforce the generation of minute-level pricing.
-    Each subclass must implement generate_minute_price, which updates the 
-    StockData object with a new price point.
+    """Abstract base class for generating minute-level stock prices.
+    
+    Subclasses must implement the generate_minute_price method to define specific
+    price generation logic.
+    
+    Args:
+        ABC (ABC): Inherits from ABC to make this an abstract base class
     """
     @abstractmethod
     def generate_minute_price(self, stock_data, time):
+        """Generate and add new price point to StockData.
+        
+        Args:
+            stock_data (PriceData): Stock data object to update
+            time (datetime): Timestamp for the new price point
+            
+        Returns:
+            None: Updates StockData in-place
+        """
         pass
 
     def update_stock_data(self, stock_data, open_price, close_price):
@@ -36,12 +48,39 @@ class PriceBaseGenerator(ABC):
 
 # gen method 1: random walk
 class RandomWalkGenerator(PriceBaseGenerator):
+    """Generates stock prices using a random walk model with daily drift.
+    
+    Attributes:
+        volatility (float): Maximum percentage change per minute (0-1). Defaults to 0.03.
+        drift (float): Daily price drift magnitude (absolute value). Defaults to 0.05.
+        last_price (float): Last recorded price for continuity between generations.
+    """
     def __init__(self, volatility=0.03, drift=0.05):
+        """Initialize random walk generator.
+        
+        Args:
+            volatility (float, optional): Maximum percentage change per minute. Defaults to 0.03.
+            drift (float, optional): Daily price drift magnitude. Defaults to 0.05.
+        """
         self.volatility = volatility
         self.drift = drift
         self.last_price = None
     
     def generate_minute_price(self, stock_data: PriceData):
+        """Generate next price using random walk model with daily drift.
+        
+        Implementation steps:
+        1. Get latest price from stock data
+        2. Generate random price fluctuation within volatility bounds
+        3. Apply daily drift at market open (first minute of trading day)
+        4. Update stock data with new price point
+        
+        Args:
+            stock_data (PriceData): Stock data object to update with new price point
+            
+        Returns:
+            None: Updates PriceData object in-place via update_stock_data()
+        """
         if self.last_price is None:
             self.last_price = stock_data.get_latest_price()
 
@@ -59,10 +98,18 @@ class RandomWalkGenerator(PriceBaseGenerator):
 
 # gen method 2: Geometric Brownian Motion (GBM)
 class GeometricBrownianMotionPriceGenerator(PriceBaseGenerator):
+    """Generates stock prices using Geometric Brownian Motion (GBM) model.
+    
+    Implements the classic Black-Scholes model for stock price evolution.
+    """
     def __init__(self, volatility=0.03, drift=0.05, mu=0.1, sigma=0.2):
-        """
-        :param mu: Annual drift (expected return)
-        :param sigma: Annual volatility
+        """Initialize GBM generator.
+        
+        Args:
+            volatility (float, optional): Base volatility component. Defaults to 0.03.
+            drift (float, optional): Daily drift component. Defaults to 0.05.
+            mu (float, optional): Annual expected return (drift). Defaults to 0.1.
+            sigma (float, optional): Annual volatility. Defaults to 0.2.
         """
         self.mu = mu
         self.sigma = sigma
@@ -74,9 +121,23 @@ class GeometricBrownianMotionPriceGenerator(PriceBaseGenerator):
         self.dt = 1.0 / 525600.0
 
     def generate_minute_price(self, stock_data: PriceData):
-        """
-        dS = S * (mu * dt + sigma * sqrt(dt) * Z)
-        (Using log form: S_t+1 = S_t * exp((mu - 0.5*sigma^2)*dt + sigma*sqrt(dt)*Z))
+        """Calculate next price using Geometric Brownian Motion (GBM) formula.
+        
+        Implements the discretized version of the solution to the SDE:
+        S_{t+1} = S_t * exp((μ - σ²/2)Δt + σ√Δt Z)
+        
+        Implementation steps:
+        1. Draw random normal variable for Brownian motion
+        2. Calculate drift and diffusion terms
+        3. Compute new price using GBM formula
+        4. Apply daily drift component at market open
+        5. Update stock data with new price point
+        
+        Args:
+            stock_data (PriceData): Stock data object to update with new price point
+            
+        Returns:
+            None: Updates PriceData object in-place via update_stock_data()
         """
         self.last_price = stock_data.get_latest_price()
 
@@ -99,11 +160,44 @@ class GeometricBrownianMotionPriceGenerator(PriceBaseGenerator):
 
 # gen method 3: Heston Jump Diffusion Model
 class HestonJumpDiffusionPriceGenerator(PriceBaseGenerator):
-    def __init__(self, volatility=0.03, drift=0.05, mu=0.1, kappa=1.5, theta=0.04, sigma_v=0.3, rho=0.0,
-                 jump_lambda=0.001, jump_mean=-0.2, jump_vol=0.3):
+    """Generates stock prices using Heston model with jump diffusion.
+    
+    Combines stochastic volatility (Heston model) with Merton-style jumps. Models asset prices with
+    mean-reverting stochastic volatility and occasional log-normal jumps.
+    
+    Attributes:
+        mu (float): Risk-neutral drift rate (annualized). Defaults to 0.1.
+        kappa (float): Mean reversion speed for variance. Defaults to 1.5.
+        theta (float): Long-run variance level. Defaults to 0.04.
+        sigma_v (float): Volatility of variance process. Defaults to 0.3.
+        rho (float): Correlation between price and variance Brownian motions. Defaults to 0.0.
+        jump_lambda (float): Annualized jump arrival rate. Defaults to 0.001.
+        jump_mean (float): Mean of log jump size. Defaults to -0.2.
+        jump_vol (float): Volatility of jump size. Defaults to 0.3.
+        dt (float): Time step size (1 minute as fraction of year). Calculated as 1/525600.
+        last_price (float): Last generated price for continuity between steps.
+        volatility (float): Base volatility component. Defaults to 0.03.
+        drift (float): Daily drift component. Defaults to 0.05.
+    """
+    def __init__(self, volatility=0.03, drift=0.05, mu=0.1, kappa=1.5, theta=0.04, 
+                 sigma_v=0.3, rho=0.0, jump_lambda=0.001, jump_mean=-0.2, jump_vol=0.3):
+        """Initialize Heston model with jumps.
+        
+        Args:
+            volatility (float, optional): Base volatility. Defaults to 0.03.
+            drift (float, optional): Daily drift component. Defaults to 0.05.
+            mu (float, optional): Risk-neutral drift rate. Defaults to 0.1.
+            kappa (float, optional): Mean reversion speed of variance. Defaults to 1.5.
+            theta (float, optional): Long-run variance. Defaults to 0.04.
+            sigma_v (float, optional): Volatility of variance. Defaults to 0.3.
+            rho (float, optional): Correlation between price and variance. Defaults to 0.0.
+            jump_lambda (float, optional): Jump arrival rate. Defaults to 0.001.
+            jump_mean (float, optional): Mean jump size. Defaults to -0.2.
+            jump_vol (float, optional): Jump size volatility. Defaults to 0.3.
+        """
         self.mu = mu           # Drift
         self.kappa = kappa     # Mean reversion speed of variance
-        self.theta = theta     # Long-term variance
+        self.theta = theta     # Long-run variance
         self.sigma_v = sigma_v # Vol of variance
         self.rho = rho         # Correlation
         self.jump_lambda = jump_lambda
@@ -115,6 +209,22 @@ class HestonJumpDiffusionPriceGenerator(PriceBaseGenerator):
         self.drift = drift
 
     def generate_minute_price(self, stock_data: PriceData):
+        """Generate next price using Heston model with jump diffusion.
+        
+        Implements the following steps:
+        1. Draw correlated random variables for price and variance processes
+        2. Update variance process using Heston's stochastic volatility model
+        3. Calculate price diffusion component
+        4. Check for and apply jumps using Poisson process
+        5. Apply daily drift component at market open
+        6. Update stock data with new price point
+        
+        Args:
+            stock_data (PriceData): Stock data object to update with new price point
+            
+        Returns:
+            None: Updates PriceData object in-place via update_stock_data()
+        """
         self.last_price = stock_data.get_latest_price()
 
         stock_data.variance = 0.04  # e.g., 20% vol squared
