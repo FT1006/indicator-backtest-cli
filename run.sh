@@ -1,2 +1,2 @@
-   #!/bin/bash
-   PYTHONPATH=$(pwd) venv/bin/python src/main.py
+#!/bin/bash
+PYTHONPATH=$(pwd) venv/bin/python src/main.py

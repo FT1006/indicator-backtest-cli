@@ -1,9 +1,6 @@
 from src.data_models.trade_record import TradeRecord
-from src.data_models.price_data import PriceData
-from dataclasses import dataclass
 from datetime import datetime
 from typing import List
-from src.data_models.trade_record import TradeRecord
 
 class TradeManager:
     """

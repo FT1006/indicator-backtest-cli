@@ -2,7 +2,24 @@ from src.indicators.base import BaseIndicator
 from src.data_models.indicator_value import IndicatorValue, MACDValue
 
 class PriceIndicators(BaseIndicator):
+    """
+    A class for calculating various price indicators from historical data.
+
+    Attributes:
+        close (list): A list of closing prices.
+        times (list): A list of corresponding times for the closing prices.
+    """
+
     def ma(self, n=10):
+        """
+        Calculates the Simple Moving Average (SMA) of the close prices.
+
+        Args:
+            n (int, optional): The number of periods to use for the moving average. Defaults to 10.
+
+        Returns:
+            list: A list of IndicatorValue objects containing the SMA values aligned with their corresponding times.
+        """
         # Simple Moving Average of the close prices.
         ma_values = self.rolling_mean(self.close, n)
         # Align times with computed ma_values -- assuming rolling_mean returns len(close)-n values:
@@ -12,6 +29,15 @@ class PriceIndicators(BaseIndicator):
         ]
     
     def ema(self, n=10):
+        """
+        Calculates the Exponential Moving Average (EMA) of the close prices.
+
+        Args:
+            n (int, optional): The number of periods to use for the moving average. Defaults to 10.
+
+        Returns:
+            list: A list of IndicatorValue objects containing the EMA values aligned with their corresponding times.
+        """
         # Exponential Moving Average of the close prices.
         ema_values = self.running_ema(self.close, n)
         return [
@@ -20,6 +46,15 @@ class PriceIndicators(BaseIndicator):
         ]
 
     def md(self, n=10):
+        """
+        Calculates the Moving Deviation (MD) of the close prices.
+
+        Args:
+            n (int, optional): The number of periods to use for the moving deviation. Defaults to 10.
+
+        Returns:
+            list: A list of IndicatorValue objects containing the MD values aligned with their corresponding times.
+        """
         # Rolling standard deviation (moving deviation) of the close prices.
         md_values = self.rolling_std(self.close, n)
         return [
@@ -28,6 +63,17 @@ class PriceIndicators(BaseIndicator):
         ]
     
     def macd(self, fast=12, slow=26, signal=9):
+        """
+        Calculates the Moving Average Convergence Divergence (MACD) indicator.
+
+        Args:
+            fast (int, optional): The number of periods for the fast EMA. Defaults to 12.
+            slow (int, optional): The number of periods for the slow EMA. Defaults to 26.
+            signal (int, optional): The number of periods for the signal EMA. Defaults to 9.
+
+        Returns:
+            list: A list of MACDValue objects containing the MACD, DIF, and DEA values aligned with their corresponding times.
+        """
         """
         MACD indicator:
             - DIF = EMA(fast) - EMA(slow)

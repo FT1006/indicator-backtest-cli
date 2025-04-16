@@ -25,18 +25,20 @@ class BacktestResult:
     average_trade_return: Optional[float] = None
 
     """
-    Explanation of the Ordering
-	•	Overall Performance Metrics: These are usually the first items 
-    that stakeholders (and automated reporting systems) look at. They 
-    tell you, in broad strokes, whether the strategy was profitable.
-	•	Risk-Adjusted Performance Metrics: After raw performance, it’s 
-    important to understand whether the returns came with excessive 
-    risk. Ratios like Sharpe and Sortino are industry standards for 
-    this.
-	•	Risk Metrics: Maximum drawdown and volatility provide more 
-    details on the risk profile. A strategy with high returns but 
-    equally high drawdown might not be acceptable.
-	•	Trade Statistics: While useful, these are secondary in many 
-    reports. They help diagnose whether the strategy is sustainable 
-    or if its performance is based on a few outsized trades.
+    Represents the results of a backtest, including various performance metrics.
+
+    Attributes:
+        initial_capital (float): The initial capital used in the backtest.
+        final_capital (float): The final capital after the backtest.
+        total_return (float): The total return of the backtest, which could be in absolute terms or as a percentage.
+        annualized_return (float): The compound annual growth rate (CAGR) of the backtest.
+        sharpe_ratio (Optional[float]): The Sharpe ratio of the backtest, a measure of risk-adjusted return. Defaults to None.
+        sortino_ratio (Optional[float]): The Sortino ratio of the backtest, a measure of risk-adjusted return. Defaults to None.
+        calmar_ratio (Optional[float]): The Calmar ratio of the backtest, a measure of risk-adjusted return. Defaults to None.
+        max_drawdown (Optional[float]): The maximum drawdown of the backtest, a measure of risk. Defaults to None.
+        volatility (Optional[float]): The volatility of the backtest, measured as the standard deviation of returns. Defaults to None.
+        total_trades (Optional[int]): The total number of trades executed during the backtest. Defaults to None.
+        win_rate (Optional[float]): The win rate of the backtest, as a percentage or decimal fraction. Defaults to None.
+        profit_factor (Optional[float]): The profit factor of the backtest, a measure of the strategy's profitability. Defaults to None.
+        average_trade_return (Optional[float]): The average return per trade of the backtest. Defaults to None.
     """

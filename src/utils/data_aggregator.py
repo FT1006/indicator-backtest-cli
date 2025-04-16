@@ -22,13 +22,16 @@ class DataAggregator: # new
 
     def __init__(self, price_data_list: List[PriceData]):
         """
-        Constructor: __init__
-        Purpose: Store a list of PriceData objects in this aggregator.
+        Initializes the DataAggregator with a list of PriceData objects, sorted by their earliest time.
+
+        Args:
+            price_data_list (List[PriceData]): A list of PriceData objects to be aggregated.
+
         Sorting Logic:
-        The code calls x.get_times() on each PriceData object.
-        If get_times() returns a list of times, it uses the first time x.get_times()[0] as the sorting key.
-        If a PriceData object has no times (maybe it’s empty), it uses datetime.max to ensure it sorts to the end.
-        This ensures that the list is sorted by the earliest time in each PriceData object. When you later combine all price points, you’ll be dealing with them in chronological order.
+            The sorting key is determined as follows:
+            - For each PriceData object, its earliest time is used as the sorting key if it has times.
+            - If a PriceData object has no times (i.e., it's empty), datetime.max is used to ensure it's sorted last.
+            This approach ensures the list is sorted by the earliest time in each PriceData object, allowing for chronological processing of all price points.
         """
         self.price_data_list = sorted(
             price_data_list, 
@@ -37,30 +40,28 @@ class DataAggregator: # new
 
     def aggregate_to_timeframe(self, timeframe: str) -> PriceData:
         """
-        3. aggregate_to_timeframe Method
-        This method does the heavy lifting. Its job is to aggregate all the price points in your DataAggregator’s price data list into a higher timeframe (e.g., 5-minute bars, hourly bars, etc.).
-        Validate the Timeframe  
-        If you ask for a timeframe that isn’t in TIMEFRAME_MINUTES, it raises an error.
-        Get the Interval Size in Minutes  
-        For '5min', target_minutes becomes 5. For '1h', target_minutes becomes 60, and so on.
-        Create a New PriceData to Store Results  
-        We instantiate a fresh PriceData object, intended to hold aggregated points at the new, higher timeframe.
-        Combine All PricePoints into One List  
-        We loop through each PriceData in self.price_data_list and collect all of their PricePoint objects into a single list.
-        Check if There Are Any Points  
-        If there are no points at all, just return the empty aggregated_data.
-        Sort All Points By Time  
-        Now we sort the combined list so that every PricePoint is in ascending time order.
-        Initialize the First Interval  
-        We pick the time of the earliest point in all_points.
-        We then call _normalize_time(...) to round down that time to the nearest “interval start.” (Explained further below.)
-        current_interval is a list that will temporarily store points that fall into the same interval.
-        Main Loop Over All Points  
-        For each PricePoint, we compute interval_end which is start_time + target_minutes.
-        Handle the Last Interval  
-        After the loop finishes, if there are still points sitting in current_interval, we aggregate them as well.
-        Return the Aggregated Result  
-        Now aggregated_data contains all the new “candles” or aggregated price bars at the requested timeframe.
+        Aggregates all PricePoint objects in the DataAggregator's price data list into a higher timeframe.
+
+        Parameters:
+            timeframe (str): The target aggregation timeframe. Supported values are '5min', '15min', '30min', '1h', '4h', and '1d'.
+
+        Returns:
+            PriceData: A new PriceData object containing the aggregated price points at the specified timeframe.
+
+        Raises:
+            ValueError: If the specified timeframe is not supported.
+
+        Process Overview:
+            1. Validate that the specified timeframe is supported; raise a ValueError if it is not.
+            2. Determine the interval size in minutes based on the timeframe.
+            3. Create a new PriceData object to store the aggregated results.
+            4. Consolidate all PricePoint objects from the price data list into a single list.
+            5. If there are no PricePoint objects, return the empty PriceData.
+            6. Sort the consolidated PricePoint objects chronologically.
+            7. Initialize the first interval by rounding down the earliest timestamp to the nearest interval start.
+            8. Iterate through the sorted PricePoints, aggregating those within the same interval.
+            9. Process any remaining points in the final interval after iteration.
+            10. Return the aggregated PriceData object.
         """
         if timeframe not in self.TIMEFRAME_MINUTES:
             raise ValueError(f"Unsupported timeframe. Supported values: {list(self.TIMEFRAME_MINUTES.keys())}")
@@ -105,14 +106,18 @@ class DataAggregator: # new
 
     def _normalize_time(self, time: datetime, interval_minutes: int) -> datetime:
         """
-        4. _normalize_time Method
-        Purpose: Round down a given datetime to the nearest interval boundary.
-        How It Works:
-        Convert the hour and minute to total minutes from midnight.
-        Do integer division by interval_minutes to find how many intervals have passed, then multiply by interval_minutes to get the “rounded down” minute count.
-        Rebuild the time object with the new hour and minute, and zero out seconds and microseconds.
-        Example: If time = 10:03 and interval_minutes = 5:  
-        _normalize_time(10:03, 5) becomes 10:00:00.
+        Round down a given datetime to the nearest interval boundary.
+
+        Args:
+            time (datetime): The datetime to be normalized.
+            interval_minutes (int): The interval in minutes.
+
+        Returns:
+            datetime: The normalized datetime.
+
+        Example:
+            If time = 10:03 and interval_minutes = 5:
+            _normalize_time(10:03, 5) becomes 10:00:00.
         """
         minutes = time.hour * 60 + time.minute
         normalized_minutes = (minutes // interval_minutes) * interval_minutes
@@ -123,16 +128,26 @@ class DataAggregator: # new
 
     def _aggregate_interval(self, points: List[PricePoint], timeframe: str) -> PricePoint:
         """
-        5. _aggregate_interval Method
-        Purpose: Turn a list of PricePoint objects (all in the same interval) into one “candlestick” or “bar.”
-        How It Works:
-        We ensure points isn’t empty (just in case).
-        Open = the open price of the first point in the interval.
-        Close = the close price of the last point in the interval.
-        High = the maximum high among the points in that interval.
-        Low = the minimum low among the points in that interval.
-        Volume = the sum of all volumes in the interval.
-        The aggregated candle’s time is set to the earliest time in the interval (points[0].time).
+        Aggregates a list of PricePoint objects into a single PricePoint representing a candlestick or bar.
+
+        Args:
+            points (List[PricePoint]): A list of PricePoint objects to be aggregated.
+            timeframe (str): The timeframe of the aggregated PricePoint.
+
+        Returns:
+            PricePoint: A single PricePoint object representing the aggregated interval.
+
+        Raises:
+            ValueError: If the input list of points is empty.
+
+        This method aggregates a list of PricePoint objects within the same interval into a single PricePoint.
+        It ensures the input list is not empty, then calculates the aggregated PricePoint's properties as follows:
+        - Open: The open price of the first point in the interval.
+        - Close: The close price of the last point in the interval.
+        - High: The maximum high price among all points in the interval.
+        - Low: The minimum low price among all points in the interval.
+        - Volume: The sum of all volumes in the interval.
+        - Time: The earliest time in the interval, which is the time of the first point.
         """
         if not points:
             raise ValueError("Cannot aggregate empty interval")
@@ -157,18 +172,16 @@ class DataAggregator: # new
 
 class TimeframeAggregator: # obsolete
     """
-    Bucket Grouping:
-    Purpose: The code groups price points into buckets based on a target timeframe (e.g., 5-minute intervals).
-    
-    Process:
-    • Convert each datetime to seconds since midnight.
-    • Determine which bucket (interval) the time belongs to by integer dividing the total seconds.
-    • Convert back to a datetime representing the start of that bucket.
-    • Group price points that fall in the same bucket together.
-    • For each bucket, compute the aggregated Open, High, Low, Close (OHLC) data.
+    This class is responsible for grouping price points into buckets based on a target timeframe (e.g., 5-minute intervals).
+    The process involves:
+    1. Converting each datetime to seconds since midnight.
+    2. Determining which bucket (interval) the time belongs to by integer dividing the total seconds.
+    3. Converting back to a datetime representing the start of that bucket.
+    4. Grouping price points that fall in the same bucket together.
+    5. For each bucket, computing the aggregated Open, High, Low, Close (OHLC) data.
 
     Attributes:
-    - target_timeframe (timedelta): The duration of the target timeframe for aggregating price points.
+        target_timeframe (timedelta): The duration of the target timeframe for aggregating price points.
     """
 
     def __init__(self, target_timeframe: timedelta):
@@ -184,14 +197,14 @@ class TimeframeAggregator: # obsolete
 
     def aggregate(self, price_data: PriceData) -> PriceData:
         """
-        Aggregate price points into higher timeframe bars based on the target timeframe.
+        Aggregates price points into higher timeframe bars based on the target timeframe.
         
         This method groups the PricePoint objects from the provided PriceData into buckets 
         according to the target timeframe. It computes the aggregated Open, High, Low, 
         Close (OHLC) data for each bucket and returns a new PriceData object containing 
         the aggregated results.
 
-        Parameters:
+        Args:
         - price_data (PriceData): The PriceData object containing the price points to be aggregated.
 
         Returns:

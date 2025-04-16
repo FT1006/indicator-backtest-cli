@@ -1,18 +1,14 @@
 # test_chart_plotting.py
-import sys
-from datetime import datetime, timedelta
+from datetime import datetime
 from src.data_models.price_data import PriceData, PricePoint
 from src.price_generators import (
     RandomWalkGenerator,
     GeometricBrownianMotionPriceGenerator,
     HestonJumpDiffusionPriceGenerator
 )
-from src.utils.chart_plotting import plot_price_data
 from src.config.cli_config_loader import CLIConfigLoader
 from src.utils.log import setup_logger
 from src.controllers.backtest_controller import BacktestController
-from src.backtesting.performance_calculator import BacktestPerformance
-import logging
 
 # Import the backtest engine and strategies
 from src.backtesting.backtest_engine import BacktestEngine, TwoMAStrategy, TwoMACDStrategy
@@ -160,7 +156,7 @@ def main():
         plot_price_data(price_data)
         print("Step 11 completed: Price data plotted.")
         """
-    except Exception as e:
+    except Exception:
         logger.error("An error occurred", exc_info=True)
         raise
         

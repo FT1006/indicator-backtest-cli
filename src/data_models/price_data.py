@@ -1,5 +1,3 @@
-from datetime import datetime
-
 class PricePoint:
     def __init__(self, time, open, high, low, close, volume):
         self.time = time

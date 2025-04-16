@@ -1,18 +1,17 @@
-# indicator-backtest-cli
-# indicator-backtest-cli
+# Indicator Backtest CLI
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A command-line interface for financial instrument backtesting with multiple price generation models and trading strategies.
+A command-line interface for backtesting trading strategies using synthetic price data with various financial models.
 
 ## Overview
 
-The indicator-backtest-cli is a sophisticated backtesting environment that enables users to:
-
-- Generate synthetic price data using different financial models
-- Test trading strategies against historical/simulated market data
-- Analyze strategy performance through detailed metrics and visualizations
+The Indicator Backtest CLI provides a framework for:
+- Generating synthetic price data using different financial models
+- Implementing and testing trading strategies based on technical indicators
+- Analyzing strategy performance through detailed metrics
+- Visualizing price data, indicators, and executed trades
 
 ## Features
 
@@ -21,58 +20,101 @@ The indicator-backtest-cli is a sophisticated backtesting environment that enabl
   - Geometric Brownian Motion
   - Heston Jump Diffusion
   
+- **Technical Indicators**:
+  - Simple Moving Average (SMA)
+  - Exponential Moving Average (EMA)
+  - MACD (Moving Average Convergence Divergence)
+
 - **Trading Strategies**:
   - Two Moving Averages (2MA)
   - Two MACD (2MACD)
   
 - **Key Capabilities**:
-  - Performance metrics calculation
+  - Strategy performance evaluation
   - Trade execution simulation
   - Interactive CLI interface
   - Configurable logging
 
 ## Installation
-bash
+
+Clone the repository and set up a virtual environment:
+
+```bash
 git clone https://github.com/yourusername/indicator-backtest-cli.git
 cd indicator-backtest-cli
-pip install -e .
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
 
 ## Usage
-bash
+
+Run the main script to start the CLI:
+
+```bash
 python src/main.py
+```
 
-Example workflow:
-1. Select price generation model (1-3)
-2. Choose trading strategy (1-3)
-3. Review generated price data
-4. Analyze backtest results
-5. View performance metrics
+The application will guide you through:
 
-## Configuration
+1. Selecting a price generation model
+2. Choosing a trading strategy
+3. Running the backtest simulation
+4. Viewing performance results and metrics
 
-The application can be configured through:
-- `config/cli_config.yaml` for default parameters
-- Environment variables
-- Runtime CLI inputs
+## Project Structure
 
-Key configurable parameters:
-- Logging verbosity
-- Simulation duration
-- Strategy parameters
-- Price generation settings
+```
+indicator-backtest-cli/
+├── src/
+│   ├── backtesting/      # Core backtesting engine and performance metrics
+│   ├── config/           # Configuration management
+│   ├── controllers/      # Application flow controllers
+│   ├── data_models/      # Data structures for prices, signals, trades
+│   ├── indicators/       # Technical indicator implementations
+│   ├── utils/            # Utility functions and visualization
+│   ├── main.py           # Application entry point
+│   └── price_generators.py # Price simulation models
+```
+
+## Extending the Framework
+
+### Adding New Indicators
+
+Extend the `PriceIndicators` class in `src/indicators/price_indicators.py`:
+
+```python
+def my_indicator(self, param1=10, param2=20):
+    # Implementation...
+    return [IndicatorValue(time=t, indicator="MyIndicator", value=val)
+            for t, val in zip(times, values)]
+```
+
+### Creating New Strategies
+
+Subclass the `Strategy` class in `src/backtesting/backtest_engine.py`:
+
+```python
+class MyNewStrategy(Strategy):
+    def __init__(self, price_data, param1=10, param2=20):
+        super().__init__(price_data)
+        self.param1 = param1
+        self.param2 = param2
+        self.name = "MyStrategy"
+
+    def generate_signals(self):
+        # Signal generation logic...
+        return signals
+```
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
-1. Open an issue to discuss proposed changes
-2. Fork the repository
-3. Create a feature branch
-4. Submit a pull request
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Project Status
 
-Active development - v0.1.0 (Beta)
+Active development - beta version
